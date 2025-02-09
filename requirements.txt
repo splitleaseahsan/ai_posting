@@ -1,0 +1,8 @@
+flask
+pandas
+openai
+scikit-learn
+numpy
+scipy
+requests
+transformers
