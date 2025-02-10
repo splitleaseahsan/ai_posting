@@ -1,22 +1,26 @@
 import pandas as pd
-import random
+import os
 from flask import Flask, request, jsonify
 import openai
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
 # Set your OpenAI API key
-OPENAI_API_KEY = ""
-
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CSV_FILE_PATH = os.path.join(SCRIPT_DIR, "craigslist_data.csv")
 
 # Load successful posts from the CSV
-def load_successful_posts(csv_file="/mnt/data/craigslist_data.csv"):
+def load_successful_posts():
     """Loads successful listings with relevant features."""
     try:
-        df = pd.read_csv(csv_file)
+        df = pd.read_csv(CSV_FILE_PATH)
         successful_posts = df[df["Success"] == 1].dropna(subset=["Post_Title", "Description"])
         if successful_posts.empty:
             print("No successful listings found in the dataset.")

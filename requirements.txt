@@ -1,8 +1,9 @@
-flask
-pandas
-openai
+flask~=3.1.0
+pandas~=2.2.3
+openai~=0.28.0
 scikit-learn
 numpy
 scipy
 requests
 transformers
+python-dotenv~=1.0.1
