@@ -52,7 +52,7 @@ def get_style_inspiration():
     }
 
 
-@app.route("/predict_full_listing", methods=["POST"])
+@app.route("/create_craigslist", methods=["POST"])
 def predict_full_listing():
     """Enhances and rewrites a real estate listing inspired by successful Craigslist posts.
        If no input is provided, generates a new listing based on successful listings."""
