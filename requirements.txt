@@ -7,3 +7,8 @@ scipy
 requests
 transformers
 python-dotenv~=1.0.1
+scipy
+joblib
+xgboost
+matplotlib
+imbalanced-learn
