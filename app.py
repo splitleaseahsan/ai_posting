@@ -11,10 +11,12 @@ from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier, plot_importance
 from scipy.sparse import hstack
 import matplotlib.pyplot as plt
+from flask_cors import CORS
 
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
 # Set OpenAI API key
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
