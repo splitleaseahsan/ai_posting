@@ -5,7 +5,7 @@ from rapidfuzz import fuzz
 # Load the pre-trained SentenceTransformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Define T&C violation clauses – update these based on actual Craigslist T&C.
+# Updated T&C violation clauses – expanded to capture more types of violations.
 tc_violation_clauses = [
     "Posts that contain fraudulent, deceptive, or scam-related content are not allowed.",
     "Any post that uses misleading or false information will be removed.",
@@ -13,30 +13,39 @@ tc_violation_clauses = [
     "Posts that promote illegal activities or violate community guidelines will be flagged.",
     "Posts containing obvious misspellings or deliberate obfuscation of scam-related words are not allowed.",
     "Posts that contain rude, threatening, or harassing language are not allowed.",
-    "Posts that include violent or aggressive statements, such as threats to fight, attack, or harm others, will be flagged."
+    "Posts that include violent or aggressive statements, such as threats to fight, attack, or harm others, will be flagged.",
+    "Posts that contain unintelligible gibberish or random character strings are not allowed.",
+    "Posts with insulting or demeaning language are not allowed.",
+    "Posts with unrealistic or misleading financial claims are prohibited.",
+    "Hateful, racist, or discriminatory language is strictly forbidden.",
+    "Posts containing repetitive spam-like phrases are not allowed.",
+    "Posts that use obfuscated or leetspeak language to disguise their content are not allowed.",
+    "Posts that include the word 'fraudulent' or imply fraud are not allowed."
 ]
 
-# Pre-compute embeddings for the T&C violation clauses.
+# Pre-compute embeddings for the updated T&C violation clauses.
 tc_embeddings = model.encode(tc_violation_clauses, convert_to_tensor=True)
 
 
 def is_gibberish(token: str) -> bool:
     """
-    A simple heuristic to detect gibberish:
-    If a token (after removing non-alphabetic characters) is longer than 8 characters
-    and has a very low ratio of vowels (< 20%), consider it gibberish.
+    Detect gibberish using a dynamic heuristic:
+      - Remove non-alphabetic characters.
+      - If a token has at least 3 alphabetic characters and its vowel ratio is below 0.2, consider it gibberish.
+    This way, tokens of any length (≥ 3) with almost no vowels (i.e. random strings) are flagged.
     """
-    token = token.lower()
-    token = re.sub(r'[^a-z]', '', token)
-    if len(token) > 8:
-        vowels = sum(1 for c in token if c in 'aeiou')
-        ratio = vowels / len(token)
-        if ratio < 0.2:
-            return True
-    return False
+    token_clean = re.sub(r'[^a-z]', '', token.lower())
+    if len(token_clean) < 3:
+        return False  # Too short to judge
+    vowels = sum(1 for c in token_clean if c in 'aeiou')
+    vowel_ratio = vowels / len(token_clean)
+    return vowel_ratio < 0.2
 
 
-def adjust_similarity_with_fuzzy(similarity: float, text: str, targets: list = ["scam", "threat", "fight"]) -> float:
+def adjust_similarity_with_fuzzy(similarity: float, text: str,
+                                 targets: list = ["scam", "threat", "fight",
+                                                  "idiot", "guaranteed", "despise",
+                                                  "buy now", "fraudulent"]) -> float:
     """
     Adjust the similarity score by:
       - Computing fuzzy match scores for each target word.
@@ -49,7 +58,7 @@ def adjust_similarity_with_fuzzy(similarity: float, text: str, targets: list = [
         if fuzzy_score > max_fuzzy:
             max_fuzzy = fuzzy_score
 
-    # Check for gibberish tokens.
+    # Check for gibberish tokens in the text.
     gibberish_bonus = 0.0
     tokens = text.split()
     for token in tokens:
@@ -62,32 +71,18 @@ def adjust_similarity_with_fuzzy(similarity: float, text: str, targets: list = [
 
 def predict_post_tc_hybrid(post_title: str, description: str, similarity_threshold: float = 0.7) -> None:
     """
-    Predicts whether a post should be flagged based on:
-      - Semantic similarity of the post to T&C violation clauses.
-      - Fuzzy matching scores for key terms ("scam", "threat", "fight").
-      - Detection of gibberish tokens.
+    Predict whether a post should be flagged based on:
+      - Semantic similarity of the combined post (title + description) to the T&C violation clauses.
+      - Fuzzy matching scores for key terms.
+      - A bonus if gibberish tokens are detected.
 
     If the adjusted similarity meets or exceeds the threshold, the post is flagged.
-
-    Parameters:
-      - post_title: Title of the post.
-      - description: Description of the post.
-      - similarity_threshold: The cutoff for flagging a post.
     """
-    # Combine title and description.
     post_text = post_title + " " + description
-
-    # Compute the embedding of the post.
     post_embedding = model.encode(post_text, convert_to_tensor=True)
-
-    # Compute cosine similarities between the post and each T&C violation clause.
     similarities = util.cos_sim(post_embedding, tc_embeddings)
     max_similarity = float(similarities.max())
-
-    # Adjust the similarity using fuzzy matching and gibberish detection.
-    adjusted_similarity = adjust_similarity_with_fuzzy(max_similarity, post_text, targets=["scam", "threat", "fight"])
-
-    # Determine the outcome.
+    adjusted_similarity = adjust_similarity_with_fuzzy(max_similarity, post_text)
     prediction = "Flagged" if adjusted_similarity >= similarity_threshold else "Successful (Not Flagged)"
 
     print("\nPrediction for the provided post:")
