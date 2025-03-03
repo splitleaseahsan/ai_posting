@@ -12,3 +12,4 @@ joblib
 xgboost
 matplotlib
 imbalanced-learn
+sentence_transformers
