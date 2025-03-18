@@ -274,6 +274,52 @@ def predict_full_listing():
             except (SyntaxError, ValueError):
                 return jsonify({"error": "Still invalid JSON from OpenAI", "raw_response": ai_content}), 500
 
+        # Build a relative file path to the Excel file.
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        excel_file_path = os.path.join(base_dir, "Craigslist-Post.xlsx")
+        if not os.path.exists(excel_file_path):
+            return jsonify({"error": f"Excel file not found at {excel_file_path}"}), 500
+
+        try:
+            # Read the "postData" sheet from the Excel file.
+            df_excel = pd.read_excel(excel_file_path, sheet_name="PostData")
+            if df_excel.empty:
+                raise ValueError("Excel file is empty.")
+            random_row = df_excel.sample(n=1).iloc[0].to_dict()
+        except Exception as excel_err:
+            return jsonify({"error": f"Error processing Excel file: {str(excel_err)}"}), 500
+
+        # Define the required columns from the "postData" sheet.
+        required_columns = [
+            "Link", "Borough", "Location", "Category", "Title", "Price", "Description", "Zip",
+            "Sqft", "Private Room", "Private Bath", "Laundry", "Parking", "Bedrooms", "Bathrooms",
+            "Rent Period", "Cats", "Dogs", "Furnished", "No Smoking", "Wheelchair accessible",
+            "Air conditioning", "EV charging", "Available On", "Street", "City", "Housing Type"
+        ]
+
+        # Map Excel fields to keys in additional_suggestions when available.
+        mapping = {
+            "Price": "price",
+            "Bedrooms": "bedrooms",
+            "Bathrooms": "bathrooms",
+            "Location": "location"
+        }
+
+        excel_details = {}
+        for col in required_columns:
+            value = random_row.get(col)
+            # Check for missing value using pd.isna() (handles NaT, NaN, None, etc.)
+            if pd.isna(value) or str(value).strip().upper() == "N/A":
+                additional_key = mapping.get(col)
+                if additional_key and additional_key in parsed_response["additional_suggestions"]:
+                    excel_details[col] = parsed_response["additional_suggestions"][additional_key]
+                else:
+                    excel_details[col] = ""
+            else:
+                excel_details[col] = value
+
+        parsed_response["listing_details"] = excel_details
+
         return jsonify(parsed_response)
 
     except openai.error.OpenAIError as e:
