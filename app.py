@@ -212,7 +212,8 @@ def predict_full_listing():
 
     prompt = f"""
     You are a professional real estate copywriter with expertise in writing high-performing Craigslist listings.
-    Rewrite and optimize the given real estate listing using the proven style, structure, and tone of successful posts.
+    Rewrite and optimize the given real estate listing using the proven style, structure, and tone of successful posts. 
+    Return only a valid JSON object with no additional text, markdown, or comments.
 
     ### **Style Inspiration**
     - **Successful Titles:** 
